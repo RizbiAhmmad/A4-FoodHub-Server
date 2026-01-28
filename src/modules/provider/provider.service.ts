@@ -10,8 +10,15 @@ const createProviderProfile = async (userId: string, data: Omit<ProviderProfile,
   });
 };
 
+const getProviderProfileByUserId = async (userId: string) => {
+  return await prisma.providerProfile.findUnique({
+    where: { userId },
+    include: { meals: true },
+  });
+};
+
 
 export const providerService = {
   createProviderProfile,
-  
+  getProviderProfileByUserId
 };
