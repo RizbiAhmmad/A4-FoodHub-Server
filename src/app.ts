@@ -3,6 +3,7 @@ import cors from 'cors'
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { providerRouter } from "./modules/provider/provider.router";
+import { categoryRouter } from "./modules/category/category.router";
 
 const app:Application = express();
 
@@ -19,5 +20,6 @@ app.get ("/", (req,res)=>{
 })
 
 app.use("/api/providers", providerRouter);
+app.use("/api/categories", categoryRouter);
 
 export default app
