@@ -10,6 +10,6 @@ router.get("/:id", mealController.getMealById);
 // PROVIDER ONLY
 router.post("/", auth(UserRole.PROVIDER), mealController.createMeal);
 router.patch("/:id", auth(UserRole.PROVIDER), mealController.updateMeal);
-
+router.delete("/:id", auth(UserRole.PROVIDER), mealController.deleteMeal);
 
 export const mealRouter = router;

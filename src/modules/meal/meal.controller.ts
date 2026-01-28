@@ -37,17 +37,30 @@ const updateMeal = async (req: Request, res: Response) => {
   const result = await mealService.updateMeal(
     req.params.id as string,
     provider!.id,
-    req.body
+    req.body,
   );
 
   res.json(result);
 };
 
+const deleteMeal = async (req: Request, res: Response) => {
+  const user = req.user!;
+  const provider = await prisma.providerProfile.findUnique({
+    where: { userId: user.id },
+  });
 
+  const result = await mealService.deleteMeal(
+    req.params.id as string,
+    provider!.id,
+  );
+
+  res.json(result);
+};
 
 export const mealController = {
   createMeal,
- getAllMeals,
- getMealById,
- updateMeal
+  getAllMeals,
+  getMealById,
+  updateMeal,
+  deleteMeal,
 };
