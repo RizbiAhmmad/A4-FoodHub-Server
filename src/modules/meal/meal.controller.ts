@@ -23,8 +23,14 @@ const getAllMeals = async (req: Request, res: Response) => {
   res.json(result);
 };
 
+const getMealById = async (req: Request, res: Response) => {
+  const result = await mealService.getMealById(req.params.id as string);
+  res.json(result);
+};
+
 
 export const mealController = {
   createMeal,
- getAllMeals
+ getAllMeals,
+ getMealById
 };
