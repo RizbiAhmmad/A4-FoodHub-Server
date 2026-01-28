@@ -29,10 +29,17 @@ const getMealById = async (id: string) => {
   });
 };
 
+const updateMeal = async (mealId: string, providerId: string, data: any) => {
+  return prisma.meal.updateMany({
+    where: { id: mealId, providerId },
+    data,
+  });
+};
 
 export const mealService = {
   createMeal,
  getAllMeals,
- getMealById
+ getMealById,
+ updateMeal
 
 };

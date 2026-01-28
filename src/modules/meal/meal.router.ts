@@ -9,6 +9,7 @@ router.get("/:id", mealController.getMealById);
 
 // PROVIDER ONLY
 router.post("/", auth(UserRole.PROVIDER), mealController.createMeal);
+router.patch("/:id", auth(UserRole.PROVIDER), mealController.updateMeal);
 
 
 export const mealRouter = router;
