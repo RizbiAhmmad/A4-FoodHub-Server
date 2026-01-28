@@ -6,5 +6,6 @@ const router = Router();
 
 router.post("/", auth(UserRole.ADMIN, UserRole.PROVIDER), categoryController.createCategory);
 router.get("/", categoryController.getAllCategories);
+router.delete("/:id", auth(UserRole.ADMIN, UserRole.PROVIDER), categoryController.deleteCategory);
 
 export const categoryRouter = router;

@@ -10,8 +10,12 @@ const getAllCategories = async () => {
   });
 };
 
+const deleteCategory = async (id: string) => {
+  return prisma.category.delete({ where: { id } });
+};
+
 export const categoryService = {
   createCategory,
   getAllCategories,
-  
+  deleteCategory
 };
