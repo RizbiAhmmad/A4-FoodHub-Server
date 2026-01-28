@@ -10,7 +10,12 @@ const createCategory = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
+const getAllCategories = async (req: Request, res: Response) => {
+  const result = await categoryService.getAllCategories();
+  res.json(result);
+};
+
 export const categoryController = {
   createCategory,
-  
+  getAllCategories,
 };
