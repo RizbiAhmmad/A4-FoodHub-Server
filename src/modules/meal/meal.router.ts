@@ -4,6 +4,7 @@ import auth, { UserRole } from "../../middlewares/auth";
 
 const router = Router();
 
+router.get("/", mealController.getAllMeals);
 
 // PROVIDER ONLY
 router.post("/", auth(UserRole.PROVIDER), mealController.createMeal);

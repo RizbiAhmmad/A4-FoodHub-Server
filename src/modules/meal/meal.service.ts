@@ -9,8 +9,18 @@ const createMeal = async (providerId: string, data: any) => {
   });
 };
 
+const getAllMeals = async () => {
+  return prisma.meal.findMany({
+    include: {
+      provider: true,
+      category: true,
+    },
+  });
+};
+
 
 export const mealService = {
   createMeal,
+ getAllMeals,
  
 };

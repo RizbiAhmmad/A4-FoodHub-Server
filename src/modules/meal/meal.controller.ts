@@ -18,8 +18,13 @@ const createMeal = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const getAllMeals = async (req: Request, res: Response) => {
+  const result = await mealService.getAllMeals();
+  res.json(result);
+};
+
 
 export const mealController = {
   createMeal,
- 
+ getAllMeals
 };
