@@ -32,7 +32,20 @@ const getMyProfile = async (req: Request, res: Response) => {
   }
 };
 
+const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) throw new Error("Unauthorized");
+
+    const result = await providerService.updateProviderProfile(user.id, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error, details: error });
+  }
+};
+
 export const providerController = {
   createProfile,
   getMyProfile,
+  updateProfile,
 };

@@ -17,8 +17,15 @@ const getProviderProfileByUserId = async (userId: string) => {
   });
 };
 
+const updateProviderProfile = async (userId: string, data: Partial<ProviderProfile>) => {
+  return await prisma.providerProfile.update({
+    where: { userId },
+    data,
+  });
+};
 
 export const providerService = {
   createProviderProfile,
-  getProviderProfileByUserId
+  getProviderProfileByUserId,
+  updateProviderProfile
 };
