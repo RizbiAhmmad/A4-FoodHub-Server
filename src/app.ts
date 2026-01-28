@@ -4,6 +4,7 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { providerRouter } from "./modules/provider/provider.router";
 import { categoryRouter } from "./modules/category/category.router";
+import { mealRouter } from "./modules/meal/meal.router";
 
 const app:Application = express();
 
@@ -21,5 +22,6 @@ app.get ("/", (req,res)=>{
 
 app.use("/api/providers", providerRouter);
 app.use("/api/categories", categoryRouter);
+app.use("/api/meals", mealRouter);
 
 export default app
