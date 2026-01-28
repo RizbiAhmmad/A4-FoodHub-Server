@@ -5,6 +5,7 @@ import { auth } from "./lib/auth";
 import { providerRouter } from "./modules/provider/provider.router";
 import { categoryRouter } from "./modules/category/category.router";
 import { mealRouter } from "./modules/meal/meal.router";
+import { orderRouter } from "./modules/order/order.router";
 
 const app:Application = express();
 
@@ -23,5 +24,6 @@ app.get ("/", (req,res)=>{
 app.use("/api/providers", providerRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/meals", mealRouter);
+app.use("/api/orders", orderRouter);
 
 export default app

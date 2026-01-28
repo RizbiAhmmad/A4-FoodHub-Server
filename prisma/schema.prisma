@@ -7,20 +7,31 @@ datasource db {
   provider = "postgresql"
 }
 
+enum OrderStatus {
+  PLACED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          String?   @default("CUSTOMER")
-  phone         String?
-  status        String?   @default("ACTIVE")
-  sessions      Session[]
-  accounts      Account[]
+  id              String           @id
+  name            String
+  email           String
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  role            String?          @default("CUSTOMER")
+  phone           String?
+  status          String?          @default("ACTIVE")
+  sessions        Session[]
+  accounts        Account[]
   providerProfile ProviderProfile?
+
+  orders  Order[]  @relation("CustomerOrders")
+  reviews Review[]
 
   @@unique([email])
   @@map("user")
@@ -74,7 +85,6 @@ model Verification {
   @@map("verification")
 }
 
-
 model ProviderProfile {
   id             String   @id @default(uuid())
   userId         String   @unique
@@ -87,8 +97,9 @@ model ProviderProfile {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user  User @relation(fields: [userId], references: [id])
-  meals Meal[] @relation("ProviderMeals")
+  user   User    @relation(fields: [userId], references: [id])
+  meals  Meal[]  @relation("ProviderMeals")
+  orders Order[]
 }
 
 model Category {
@@ -111,6 +122,50 @@ model Meal {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  provider  ProviderProfile @relation(fields: [providerId], references: [id], name: "ProviderMeals")
-  category  Category?       @relation(fields: [categoryId], references: [id])
+  provider ProviderProfile @relation(fields: [providerId], references: [id], name: "ProviderMeals")
+  category Category?       @relation(fields: [categoryId], references: [id])
+
+  orderItems OrderItem[]
+  reviews    Review[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  customerId  String
+  providerId  String 
+  totalAmount Float
+  status      OrderStatus @default(PLACED)
+  address     String
+  phone       String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customer User            @relation("CustomerOrders", fields: [customerId], references: [id])
+  provider ProviderProfile @relation(fields: [providerId], references: [id])
+  items    OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  orderId  String
+  mealId   String
+  quantity Int
+  price    Float
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  meal  Meal  @relation(fields: [mealId], references: [id])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  mealId     String
+  customerId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  meal     Meal @relation(fields: [mealId], references: [id])
+  customer User @relation(fields: [customerId], references: [id])
+
+  @@unique([mealId, customerId])
 }
