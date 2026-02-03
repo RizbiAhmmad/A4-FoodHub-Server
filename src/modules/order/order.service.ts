@@ -1,7 +1,6 @@
 import { OrderStatus } from "../../../generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
 
-
 const createOrder = async (customerId: string, payload: any) => {
   const { items, address, phone } = payload;
 
@@ -18,10 +17,10 @@ const createOrder = async (customerId: string, payload: any) => {
   if (meals.length !== items.length) {
     throw new Error("Invalid meal in order");
   }
-  
-if (meals.length === 0) {
-  throw new Error("Meals not found");
-}
+
+  if (meals.length === 0) {
+    throw new Error("Meals not found");
+  }
 
   const providerId = meals[0]!.providerId;
   const sameProvider = meals.every((m) => m.providerId === providerId);
@@ -83,6 +82,25 @@ const getOrderDetails = async (orderId: string) => {
     },
   });
 };
+const getProviderOrders = async (providerUserId: string) => {
+  // find provider profile first
+  const providerProfile = await prisma.providerProfile.findUnique({
+    where: { userId: providerUserId },
+  });
+
+  if (!providerProfile) {
+    throw new Error("Provider profile not found");
+  }
+
+  return prisma.order.findMany({
+    where: { providerId: providerProfile.id },
+    include: {
+      items: { include: { meal: true } },
+      customer: { select: { name: true, phone: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
 
 const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
   return prisma.order.update({
@@ -95,5 +113,6 @@ export const orderService = {
   createOrder,
   getMyOrders,
   getOrderDetails,
+  getProviderOrders,
   updateOrderStatus,
 };
