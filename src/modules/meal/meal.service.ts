@@ -18,6 +18,16 @@ const getAllMeals = async () => {
   });
 };
 
+const getMealsByProvider = async (providerId: string) => {
+  return prisma.meal.findMany({
+    where: { providerId },
+    include: {
+      category: true, // optional
+      provider: true, // optional
+    },
+  });
+};
+
 const getMealById = async (id: string) => {
   return prisma.meal.findUnique({
     where: { id },
@@ -45,6 +55,7 @@ const deleteMeal = async (mealId: string, providerId: string) => {
 export const mealService = {
   createMeal,
   getAllMeals,
+  getMealsByProvider,
   getMealById,
   updateMeal,
   deleteMeal,
