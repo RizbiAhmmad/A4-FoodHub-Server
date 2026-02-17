@@ -8,6 +8,12 @@ router.get(
   auth(UserRole.PROVIDER),
   orderController.getProviderOrders,
 );
+router.get(
+  "/admin",
+  auth(UserRole.ADMIN),
+  orderController.getAllOrders
+);
+
 
 // Customer
 router.post("/", auth(UserRole.CUSTOMER), orderController.createOrder);

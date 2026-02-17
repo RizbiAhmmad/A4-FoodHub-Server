@@ -22,8 +22,8 @@ const getMealsByProvider = async (providerId: string) => {
   return prisma.meal.findMany({
     where: { providerId },
     include: {
-      category: true, // optional
-      provider: true, // optional
+      category: true,
+      provider: true,
     },
   });
 };

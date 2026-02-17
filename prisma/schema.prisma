@@ -93,7 +93,7 @@ model ProviderProfile {
   address        String
   phone          String?
   logo           String?
-  isApproved     Boolean  @default(false)
+  isApproved     Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

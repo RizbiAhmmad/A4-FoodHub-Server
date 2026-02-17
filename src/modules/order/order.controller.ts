@@ -14,6 +14,11 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const getAllOrders = async (req: Request, res: Response) => {
+  const result = await orderService.getAllOrders();
+  res.json(result);
+};
+
 const getMyOrders = async (req: Request, res: Response) => {
   const user = req.user!;
   const result = await orderService.getMyOrders(user.id);
@@ -46,4 +51,5 @@ export const orderController = {
   getOrderDetails,
   getProviderOrders,
   updateOrderStatus,
+  getAllOrders
 };
