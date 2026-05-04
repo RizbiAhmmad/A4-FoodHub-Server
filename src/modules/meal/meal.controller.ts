@@ -19,34 +19,24 @@ const createMeal = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const getAllMeals = async (req: Request, res: Response) => {
-  const { minPrice, maxPrice, cuisine } = req.query;
+  const query = { ...req.query } as any;
 
-  const filters: any = {};
-
-  if (minPrice || maxPrice) {
-    filters.price = {};
-    if (minPrice) filters.price.gte = Number(minPrice);
-    if (maxPrice) filters.price.lte = Number(maxPrice);
+  // Map legacy frontend filters to QueryBuilder format
+  if (query.minPrice || query.maxPrice) {
+    query.price = {};
+    if (query.minPrice) query.price.gte = Number(query.minPrice);
+    if (query.maxPrice) query.price.lte = Number(query.maxPrice);
+    delete query.minPrice;
+    delete query.maxPrice;
   }
 
-  if (cuisine) {
-    filters.category = {
-      name: {
-        equals: cuisine as string,
-        mode: "insensitive",
-      },
-    };
+  if (query.cuisine) {
+    query["category.name"] = query.cuisine;
+    delete query.cuisine;
   }
 
-  const meals = await prisma.meal.findMany({
-    where: filters,
-    include: {
-      provider: true,
-      category: true,
-    },
-  });
-
-  res.json(meals);
+  const result = await mealService.getAllMeals(query);
+  res.json(result);
 };
 
 const getMyMeals = async (req: Request, res: Response) => {

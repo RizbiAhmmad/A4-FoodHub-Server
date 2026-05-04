@@ -62,15 +62,25 @@ const createOrder = async (customerId: string, payload: any) => {
   return order;
 };
 
-const getAllOrders = async () => {
-  return prisma.order.findMany({
-    include: {
+import { QueryBuilder } from "../../builder/QueryBuilder";
+
+const getAllOrders = async (query: Record<string, unknown>) => {
+  const orderQuery = new QueryBuilder(prisma.order as any, query, {
+    searchableFields: ["customer.name", "customer.email", "provider.restaurantName", "status"],
+    filterableFields: ["status", "customerId", "providerId", "totalAmount"],
+  })
+    .search()
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .dynamicInclude({
       items: { include: { meal: true } },
       customer: { select: { name: true, email: true, phone: true } },
       provider: { select: { restaurantName: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+    }, ["items", "customer", "provider"]);
+
+  return await orderQuery.execute();
 };
 
 

@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma";
+import { QueryBuilder } from "../../builder/QueryBuilder";
+import { Prisma } from "../../../generated/prisma/client";
 
 const createMeal = async (providerId: string, data: any) => {
   return prisma.meal.create({
@@ -9,13 +11,29 @@ const createMeal = async (providerId: string, data: any) => {
   });
 };
 
-const getAllMeals = async () => {
-  return prisma.meal.findMany({
-    include: {
-      provider: true,
-      category: true,
-    },
-  });
+const getAllMeals = async (query: Record<string, unknown>) => {
+  const mealQuery = new QueryBuilder(
+    prisma.meal as any,
+    query,
+    {
+      searchableFields: ["name", "description", "category.name", "provider.restaurantName"],
+      filterableFields: ["price", "categoryId", "providerId", "category.name"],
+    }
+  )
+    .search()
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .dynamicInclude(
+      {
+        provider: true,
+        category: true,
+      },
+      ["provider", "category"]
+    );
+
+  return await mealQuery.execute();
 };
 
 const getMealsByProvider = async (providerId: string) => {

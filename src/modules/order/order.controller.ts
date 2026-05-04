@@ -15,7 +15,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const getAllOrders = async (req: Request, res: Response) => {
-  const result = await orderService.getAllOrders();
+  const result = await orderService.getAllOrders(req.query as Record<string, unknown>);
   res.json(result);
 };
 

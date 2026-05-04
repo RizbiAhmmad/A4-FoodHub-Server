@@ -1,8 +1,28 @@
 import { prisma } from "../../lib/prisma";
+import { QueryBuilder } from "../../builder/QueryBuilder";
 
-const getAllUsers = async () => {
-  return prisma.user.findMany({
-    select: {
+const getAllUsers = async (query: Record<string, unknown>) => {
+  const userQuery = new QueryBuilder(prisma.user as any, query, {
+    searchableFields: ["name", "email", "role", "status"],
+    filterableFields: ["role", "status"],
+  })
+    .search()
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .dynamicInclude({
+      providerProfile: {
+        select: {
+          restaurantName: true,
+          isApproved: true,
+        },
+      },
+    }, ["providerProfile"]);
+
+  // We need to set a default select to hide password if no fields are requested
+  if (!userQuery.getQuery().select) {
+    userQuery.getQuery().select = {
       id: true,
       name: true,
       email: true,
@@ -15,9 +35,11 @@ const getAllUsers = async () => {
           isApproved: true,
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+    };
+    delete userQuery.getQuery().include;
+  }
+
+  return await userQuery.execute();
 };
 
 const getMe = async (userId: string) => {

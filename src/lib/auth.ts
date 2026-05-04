@@ -18,6 +18,23 @@ export const auth = betterAuth({
     provider: "postgresql", // or "mysql", "postgresql", ...etc
   }),
   trustedOrigins: [process.env.APP_URL!],
+
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // 5 minutes
+    },
+  },
+  advanced: {
+    cookiePrefix: "better-auth",
+    useSecureCookies:false,
+    crossSubDomainCookies: {
+      enabled: false,
+    },
+    disableCSRFCheck: true, // Allow requests without Origin header (Postman, mobile apps, etc.)
+  disableOriginCheck: true, // Disable origin check for all requests (use with caution in production)
+  },
+
   user: {
     additionalFields: {
       role: {
@@ -44,7 +61,7 @@ export const auth = betterAuth({
 
   emailVerification: {
     sendOnSignUp: true,
-     autoSignInAfterVerification: true,
+    autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url, token }, request) => {
       try {
         const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`;
@@ -139,7 +156,7 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
-      prompt:"select_account consent",
+      prompt: "select_account consent",
       accessType: "offline",
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,

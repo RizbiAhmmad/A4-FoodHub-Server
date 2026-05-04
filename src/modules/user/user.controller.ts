@@ -11,7 +11,7 @@ const getMe = async (req: Request, res: Response) => {
 };
 
 const getAllUsers = async (req: Request, res: Response) => {
-  const users = await userService.getAllUsers();
+  const users = await userService.getAllUsers(req.query as Record<string, unknown>);
   res.json(users);
 };
 
