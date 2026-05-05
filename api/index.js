@@ -544,14 +544,386 @@ var providerRouter = router;
 // src/modules/category/category.router.ts
 import { Router as Router2 } from "express";
 
+// src/builder/QueryBuilder.ts
+var QueryBuilder = class {
+  constructor(model, queryParams, config2 = {}) {
+    this.model = model;
+    this.queryParams = queryParams;
+    this.config = config2;
+    this.query = {
+      where: {},
+      include: {},
+      orderBy: {},
+      skip: 0,
+      take: 10
+    };
+    this.countQuery = {
+      where: {}
+    };
+  }
+  query;
+  countQuery;
+  page = 1;
+  limit = 10;
+  skip = 0;
+  sortBy = "createdAt";
+  sortOrder = "desc";
+  selectFields;
+  search() {
+    const { searchTerm } = this.queryParams;
+    const { searchableFields } = this.config;
+    if (searchTerm && searchableFields && searchableFields.length > 0) {
+      const searchConditions = searchableFields.map(
+        (field) => {
+          if (field.includes(".")) {
+            const parts = field.split(".");
+            if (parts.length === 2) {
+              const [relation, nestedField] = parts;
+              const stringFilter2 = {
+                contains: searchTerm,
+                mode: "insensitive"
+              };
+              return {
+                [relation]: {
+                  [nestedField]: stringFilter2
+                }
+              };
+            } else if (parts.length === 3) {
+              const [relation, nestedRelation, nestedField] = parts;
+              const stringFilter2 = {
+                contains: searchTerm,
+                mode: "insensitive"
+              };
+              return {
+                [relation]: {
+                  some: {
+                    [nestedRelation]: {
+                      [nestedField]: stringFilter2
+                    }
+                  }
+                }
+              };
+            }
+          }
+          const stringFilter = {
+            contains: searchTerm,
+            mode: "insensitive"
+          };
+          return {
+            [field]: stringFilter
+          };
+        }
+      );
+      const whereConditions = this.query.where;
+      whereConditions.OR = searchConditions;
+      const countWhereConditions = this.countQuery.where;
+      countWhereConditions.OR = searchConditions;
+    }
+    return this;
+  }
+  filter() {
+    const { filterableFields } = this.config;
+    const excludedField = [
+      "searchTerm",
+      "page",
+      "limit",
+      "sortBy",
+      "sortOrder",
+      "sort",
+      "fields",
+      "include"
+    ];
+    const filterParams = {};
+    Object.keys(this.queryParams).forEach((key) => {
+      if (!excludedField.includes(key)) {
+        filterParams[key] = this.queryParams[key];
+      }
+    });
+    const queryWhere = this.query.where;
+    const countQueryWhere = this.countQuery.where;
+    Object.keys(filterParams).forEach((key) => {
+      const value = filterParams[key];
+      if (value === void 0 || value === "") {
+        return;
+      }
+      const isAllowedField = !filterableFields || filterableFields.length === 0 || filterableFields.includes(key);
+      if (key.includes(".")) {
+        const parts = key.split(".");
+        if (filterableFields && !filterableFields.includes(key)) {
+          return;
+        }
+        if (parts.length === 2) {
+          const [relation, nestedField] = parts;
+          if (!queryWhere[relation]) {
+            queryWhere[relation] = {};
+            countQueryWhere[relation] = {};
+          }
+          const queryRelation = queryWhere[relation];
+          const countRelation = countQueryWhere[relation];
+          queryRelation[nestedField] = this.parseFilterValue(value);
+          countRelation[nestedField] = this.parseFilterValue(value);
+          return;
+        } else if (parts.length === 3) {
+          const [relation, nestedRelation, nestedField] = parts;
+          if (!queryWhere[relation]) {
+            queryWhere[relation] = {
+              some: {}
+            };
+            countQueryWhere[relation] = {
+              some: {}
+            };
+          }
+          const queryRelation = queryWhere[relation];
+          const countRelation = countQueryWhere[relation];
+          if (!queryRelation.some) {
+            queryRelation.some = {};
+          }
+          if (!countRelation.some) {
+            countRelation.some = {};
+          }
+          const querySome = queryRelation.some;
+          const countSome = countRelation.some;
+          if (!querySome[nestedRelation]) {
+            querySome[nestedRelation] = {};
+          }
+          if (!countSome[nestedRelation]) {
+            countSome[nestedRelation] = {};
+          }
+          const queryNestedRelation = querySome[nestedRelation];
+          const countNestedRelation = countSome[nestedRelation];
+          queryNestedRelation[nestedField] = this.parseFilterValue(value);
+          countNestedRelation[nestedField] = this.parseFilterValue(value);
+          return;
+        }
+      }
+      if (!isAllowedField) {
+        return;
+      }
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        queryWhere[key] = this.parseRangeFilter(
+          value
+        );
+        countQueryWhere[key] = this.parseRangeFilter(
+          value
+        );
+        return;
+      }
+      queryWhere[key] = this.parseFilterValue(value);
+      countQueryWhere[key] = this.parseFilterValue(value);
+    });
+    return this;
+  }
+  paginate() {
+    const page = Number(this.queryParams.page) || 1;
+    const limit = Number(this.queryParams.limit) || 10;
+    this.page = page;
+    this.limit = limit;
+    this.skip = (page - 1) * limit;
+    this.query.skip = this.skip;
+    this.query.take = this.limit;
+    return this;
+  }
+  sort() {
+    const sortBy = this.queryParams.sortBy || "createdAt";
+    const sortOrder = this.queryParams.sortOrder === "asc" ? "asc" : "desc";
+    this.sortBy = sortBy;
+    this.sortOrder = sortOrder;
+    if (sortBy.includes(".")) {
+      const parts = sortBy.split(".");
+      if (parts.length === 2) {
+        const [relation, nestedField] = parts;
+        this.query.orderBy = {
+          [relation]: {
+            [nestedField]: sortOrder
+          }
+        };
+      } else if (parts.length === 3) {
+        const [relation, nestedRelation, nestedField] = parts;
+        this.query.orderBy = {
+          [relation]: {
+            [nestedRelation]: {
+              [nestedField]: sortOrder
+            }
+          }
+        };
+      } else {
+        this.query.orderBy = {
+          [sortBy]: sortOrder
+        };
+      }
+    } else {
+      this.query.orderBy = {
+        [sortBy]: sortOrder
+      };
+    }
+    return this;
+  }
+  fields() {
+    const fieldsParam = this.queryParams.fields;
+    if (fieldsParam && typeof fieldsParam === "string") {
+      const fieldsArray = fieldsParam?.split(",").map((field) => field.trim());
+      this.selectFields = {};
+      fieldsArray?.forEach((field) => {
+        if (this.selectFields) {
+          this.selectFields[field] = true;
+        }
+      });
+      this.query.select = this.selectFields;
+      delete this.query.include;
+    }
+    return this;
+  }
+  include(relation) {
+    if (this.selectFields) {
+      return this;
+    }
+    this.query.include = {
+      ...this.query.include,
+      ...relation
+    };
+    return this;
+  }
+  dynamicInclude(includeConfig, defaultInclude) {
+    if (this.selectFields) {
+      return this;
+    }
+    const result = {};
+    defaultInclude?.forEach((field) => {
+      if (includeConfig[field]) {
+        result[field] = includeConfig[field];
+      }
+    });
+    const includeParam = this.queryParams.include;
+    if (includeParam && typeof includeParam === "string") {
+      const requestedRelations = includeParam.split(",").map((relation) => relation.trim());
+      requestedRelations.forEach((relation) => {
+        if (includeConfig[relation]) {
+          result[relation] = includeConfig[relation];
+        }
+      });
+    }
+    this.query.include = {
+      ...this.query.include,
+      ...result
+    };
+    return this;
+  }
+  where(condition) {
+    this.query.where = this.deepMerge(
+      this.query.where,
+      condition
+    );
+    this.countQuery.where = this.deepMerge(
+      this.countQuery.where,
+      condition
+    );
+    return this;
+  }
+  async execute() {
+    const [total, data] = await Promise.all([
+      this.model.count(
+        this.countQuery
+      ),
+      this.model.findMany(
+        this.query
+      )
+    ]);
+    const totalPages = Math.ceil(total / this.limit);
+    return {
+      data,
+      meta: {
+        page: this.page,
+        limit: this.limit,
+        total,
+        totalPages
+      }
+    };
+  }
+  async count() {
+    return await this.model.count(
+      this.countQuery
+    );
+  }
+  getQuery() {
+    return this.query;
+  }
+  deepMerge(target, source) {
+    const result = { ...target };
+    for (const key in source) {
+      if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+        if (result[key] && typeof result[key] === "object" && !Array.isArray(result[key])) {
+          result[key] = this.deepMerge(
+            result[key],
+            source[key]
+          );
+        } else {
+          result[key] = source[key];
+        }
+      } else {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  }
+  parseFilterValue(value) {
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+    if (typeof value === "string" && !isNaN(Number(value)) && value != "") {
+      return Number(value);
+    }
+    if (Array.isArray(value)) {
+      return { in: value.map((item) => this.parseFilterValue(item)) };
+    }
+    return value;
+  }
+  parseRangeFilter(value) {
+    const rangeQuery = {};
+    Object.keys(value).forEach((operator) => {
+      const operatorValue = value[operator];
+      if (operatorValue === void 0) return;
+      const parsedValue = typeof operatorValue === "string" && !isNaN(Number(operatorValue)) ? Number(operatorValue) : operatorValue;
+      switch (operator) {
+        case "lt":
+        case "lte":
+        case "gt":
+        case "gte":
+        case "equals":
+        case "not":
+        case "contains":
+        case "startsWith":
+        case "endsWith":
+          rangeQuery[operator] = parsedValue;
+          break;
+        case "in":
+        case "notIn":
+          if (Array.isArray(operatorValue)) {
+            rangeQuery[operator] = operatorValue;
+          } else {
+            rangeQuery[operator] = [parsedValue];
+          }
+          break;
+        default:
+          break;
+      }
+    });
+    return Object.keys(rangeQuery).length > 0 ? rangeQuery : value;
+  }
+};
+
 // src/modules/category/category.service.ts
 var createCategory = async (data) => {
   return prisma.category.create({ data });
 };
-var getAllCategories = async () => {
-  return prisma.category.findMany({
-    include: { meals: true }
-  });
+var getAllCategories = async (query) => {
+  const categoryQuery = new QueryBuilder(prisma.category, query, {
+    searchableFields: ["name"],
+    filterableFields: ["name"]
+  }).search().filter().sort().paginate().fields().dynamicInclude({ meals: true }, ["meals"]);
+  return await categoryQuery.execute();
 };
 var deleteCategory = async (id) => {
   return prisma.category.delete({ where: { id } });
@@ -572,7 +944,7 @@ var createCategory2 = async (req, res, next) => {
   }
 };
 var getAllCategories2 = async (req, res) => {
-  const result = await categoryService.getAllCategories();
+  const result = await categoryService.getAllCategories(req.query);
   res.json(result);
 };
 var deleteCategory2 = async (req, res) => {
@@ -604,13 +976,22 @@ var createMeal = async (providerId, data) => {
     }
   });
 };
-var getAllMeals = async () => {
-  return prisma.meal.findMany({
-    include: {
+var getAllMeals = async (query) => {
+  const mealQuery = new QueryBuilder(
+    prisma.meal,
+    query,
+    {
+      searchableFields: ["name", "description", "category.name", "provider.restaurantName"],
+      filterableFields: ["price", "categoryId", "providerId", "category.name"]
+    }
+  ).search().filter().sort().paginate().fields().dynamicInclude(
+    {
       provider: true,
       category: true
-    }
-  });
+    },
+    ["provider", "category"]
+  );
+  return await mealQuery.execute();
 };
 var getMealsByProvider = async (providerId) => {
   return prisma.meal.findMany({
@@ -666,29 +1047,20 @@ var createMeal2 = async (req, res, next) => {
   }
 };
 var getAllMeals2 = async (req, res) => {
-  const { minPrice, maxPrice, cuisine } = req.query;
-  const filters = {};
-  if (minPrice || maxPrice) {
-    filters.price = {};
-    if (minPrice) filters.price.gte = Number(minPrice);
-    if (maxPrice) filters.price.lte = Number(maxPrice);
+  const query = { ...req.query };
+  if (query.minPrice || query.maxPrice) {
+    query.price = {};
+    if (query.minPrice) query.price.gte = Number(query.minPrice);
+    if (query.maxPrice) query.price.lte = Number(query.maxPrice);
+    delete query.minPrice;
+    delete query.maxPrice;
   }
-  if (cuisine) {
-    filters.category = {
-      name: {
-        equals: cuisine,
-        mode: "insensitive"
-      }
-    };
+  if (query.cuisine) {
+    query["category.name"] = query.cuisine;
+    delete query.cuisine;
   }
-  const meals = await prisma.meal.findMany({
-    where: filters,
-    include: {
-      provider: true,
-      category: true
-    }
-  });
-  res.json(meals);
+  const result = await mealService.getAllMeals(query);
+  res.json(result);
 };
 var getMyMeals = async (req, res) => {
   try {
@@ -803,15 +1175,16 @@ var createOrder = async (customerId, payload) => {
   });
   return order;
 };
-var getAllOrders = async () => {
-  return prisma.order.findMany({
-    include: {
-      items: { include: { meal: true } },
-      customer: { select: { name: true, email: true, phone: true } },
-      provider: { select: { restaurantName: true } }
-    },
-    orderBy: { createdAt: "desc" }
-  });
+var getAllOrders = async (query) => {
+  const orderQuery = new QueryBuilder(prisma.order, query, {
+    searchableFields: ["customer.name", "customer.email", "provider.restaurantName", "status"],
+    filterableFields: ["status", "customerId", "providerId", "totalAmount"]
+  }).search().filter().sort().paginate().fields().dynamicInclude({
+    items: { include: { meal: true } },
+    customer: { select: { name: true, email: true, phone: true } },
+    provider: { select: { restaurantName: true } }
+  }, ["items", "customer", "provider"]);
+  return await orderQuery.execute();
 };
 var getMyOrders = async (customerId) => {
   return prisma.order.findMany({
@@ -875,7 +1248,7 @@ var createOrder2 = async (req, res, next) => {
   }
 };
 var getAllOrders2 = async (req, res) => {
-  const result = await orderService.getAllOrders();
+  const result = await orderService.getAllOrders(req.query);
   res.json(result);
 };
 var getMyOrders2 = async (req, res) => {
@@ -1054,9 +1427,20 @@ var reviewRouter = router5;
 import { Router as Router6 } from "express";
 
 // src/modules/user/user.service.ts
-var getAllUsers = async () => {
-  return prisma.user.findMany({
-    select: {
+var getAllUsers = async (query) => {
+  const userQuery = new QueryBuilder(prisma.user, query, {
+    searchableFields: ["name", "email", "role", "status"],
+    filterableFields: ["role", "status"]
+  }).search().filter().sort().paginate().fields().dynamicInclude({
+    providerProfile: {
+      select: {
+        restaurantName: true,
+        isApproved: true
+      }
+    }
+  }, ["providerProfile"]);
+  if (!userQuery.getQuery().select) {
+    userQuery.getQuery().select = {
       id: true,
       name: true,
       email: true,
@@ -1069,9 +1453,10 @@ var getAllUsers = async () => {
           isApproved: true
         }
       }
-    },
-    orderBy: { createdAt: "desc" }
-  });
+    };
+    delete userQuery.getQuery().include;
+  }
+  return await userQuery.execute();
 };
 var getMe = async (userId) => {
   return prisma.user.findUnique({
@@ -1120,7 +1505,7 @@ var getMe2 = async (req, res) => {
   res.json(user);
 };
 var getAllUsers2 = async (req, res) => {
-  const users = await userService.getAllUsers();
+  const users = await userService.getAllUsers(req.query);
   res.json(users);
 };
 var updateRole = async (req, res) => {

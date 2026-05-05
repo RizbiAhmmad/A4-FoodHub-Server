@@ -44,8 +44,29 @@ const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
+const getAllProviders = async (req: Request, res: Response) => {
+  try {
+    const result = await providerService.getAllProviders();
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error, details: error });
+  }
+};
+
+const getProviderById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await providerService.getProviderById(id as string);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error, details: error });
+  }
+};
+
 export const providerController = {
   createProfile,
   getMyProfile,
   updateProfile,
+  getAllProviders,
+  getProviderById,
 };

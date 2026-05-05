@@ -24,8 +24,48 @@ const updateProviderProfile = async (userId: string, data: Partial<ProviderProfi
   });
 };
 
+const getAllProviders = async () => {
+  return await prisma.providerProfile.findMany({
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      meals: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          image: true,
+        }
+      }
+    },
+  });
+};
+
+const getProviderById = async (id: string) => {
+  return await prisma.providerProfile.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      meals: true,
+    },
+  });
+};
+
 export const providerService = {
   createProviderProfile,
   getProviderProfileByUserId,
-  updateProviderProfile
+  updateProviderProfile,
+  getAllProviders,
+  getProviderById,
 };
