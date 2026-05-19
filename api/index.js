@@ -448,10 +448,48 @@ var updateProviderProfile = async (userId, data) => {
     data
   });
 };
+var getAllProviders = async () => {
+  return await prisma.providerProfile.findMany({
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true
+        }
+      },
+      meals: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          image: true
+        }
+      }
+    }
+  });
+};
+var getProviderById = async (id) => {
+  return await prisma.providerProfile.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true
+        }
+      },
+      meals: true
+    }
+  });
+};
 var providerService = {
   createProviderProfile,
   getProviderProfileByUserId,
-  updateProviderProfile
+  updateProviderProfile,
+  getAllProviders,
+  getProviderById
 };
 
 // src/modules/provider/provider.controller.ts
@@ -488,10 +526,29 @@ var updateProfile = async (req, res) => {
     res.status(400).json({ error, details: error });
   }
 };
+var getAllProviders2 = async (req, res) => {
+  try {
+    const result = await providerService.getAllProviders();
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error, details: error });
+  }
+};
+var getProviderById2 = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await providerService.getProviderById(id);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error, details: error });
+  }
+};
 var providerController = {
   createProfile,
   getMyProfile,
-  updateProfile
+  updateProfile,
+  getAllProviders: getAllProviders2,
+  getProviderById: getProviderById2
 };
 
 // src/middlewares/auth.ts
@@ -537,7 +594,9 @@ var auth_default = auth2;
 // src/modules/provider/provider.router.ts
 var router = Router();
 router.post("/", auth_default("PROVIDER" /* PROVIDER */), providerController.createProfile);
+router.get("/", providerController.getAllProviders);
 router.get("/me", auth_default("PROVIDER" /* PROVIDER */), providerController.getMyProfile);
+router.get("/:id", providerController.getProviderById);
 router.patch("/me", auth_default("PROVIDER" /* PROVIDER */), providerController.updateProfile);
 var providerRouter = router;
 
@@ -1539,6 +1598,100 @@ router6.patch("/:id/role", auth_default("ADMIN" /* ADMIN */), userController.upd
 router6.patch("/:id/status", auth_default("ADMIN" /* ADMIN */), userController.updateStatus);
 var userRouter = router6;
 
+// src/modules/meta/meta.router.ts
+import { Router as Router7 } from "express";
+
+// src/modules/meta/meta.service.ts
+var getAdminStats = async () => {
+  const [totalRevenue, totalOrders, totalCustomers, totalProviders, totalMeals] = await Promise.all([
+    prisma.order.aggregate({
+      where: { status: "DELIVERED" },
+      _sum: { totalAmount: true }
+    }),
+    prisma.order.count(),
+    prisma.user.count({ where: { role: "CUSTOMER" } }),
+    prisma.providerProfile.count(),
+    prisma.meal.count()
+  ]);
+  return {
+    totalRevenue: totalRevenue._sum.totalAmount || 0,
+    totalOrders,
+    totalCustomers,
+    totalProviders,
+    totalMeals
+  };
+};
+var getSalesData = async () => {
+  const sevenDaysAgo = /* @__PURE__ */ new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sales = await prisma.order.findMany({
+    where: {
+      createdAt: { gte: sevenDaysAgo },
+      status: "DELIVERED"
+    },
+    select: {
+      totalAmount: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: "asc" }
+  });
+  const groupedSales = sales.reduce((acc, curr) => {
+    const date = curr.createdAt.toISOString().split("T")[0];
+    if (!acc[date]) acc[date] = 0;
+    acc[date] += curr.totalAmount;
+    return acc;
+  }, {});
+  return Object.keys(groupedSales).map((date) => ({
+    date,
+    revenue: groupedSales[date]
+  }));
+};
+var getCategoryStats = async () => {
+  const categories = await prisma.category.findMany({
+    include: {
+      _count: {
+        select: { meals: true }
+      }
+    }
+  });
+  return categories.map((c) => ({
+    name: c.name,
+    count: c._count.meals
+  }));
+};
+var metaService = {
+  getAdminStats,
+  getSalesData,
+  getCategoryStats
+};
+
+// src/modules/meta/meta.controller.ts
+var getAdminAnalytics = async (req, res, next) => {
+  try {
+    const stats = await metaService.getAdminStats();
+    const salesData = await metaService.getSalesData();
+    const categoryData = await metaService.getCategoryStats();
+    res.json({
+      success: true,
+      data: {
+        stats,
+        salesData,
+        categoryData
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+var metaController = {
+  getAdminAnalytics
+};
+
+// src/modules/meta/meta.router.ts
+var router7 = Router7();
+router7.get("/admin-analytics", metaController.getAdminAnalytics);
+var metaRouter = router7;
+
 // src/middlewares/globalErrorHandler.ts
 function errorHandler(err, req, res, next) {
   let statusCode = 500;
@@ -1614,6 +1767,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+app.use("/api/meta", metaRouter);
 app.use("/api/users", userRouter);
 app.use("/api/providers", providerRouter);
 app.use("/api/categories", categoryRouter);

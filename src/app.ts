@@ -8,6 +8,7 @@ import { mealRouter } from "./modules/meal/meal.router";
 import { orderRouter } from "./modules/order/order.router";
 import { reviewRouter } from "./modules/review/review.router";
 import { userRouter } from "./modules/user/user.router";
+import { metaRouter } from "./modules/meta/meta.router";
 import errorHandler from "./middlewares/globalErrorHandler";
 import { notFound } from "./middlewares/notFound";
 
@@ -51,6 +52,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+app.use("/api/meta", metaRouter);
 app.use("/api/users", userRouter);
 app.use("/api/providers", providerRouter);
 app.use("/api/categories", categoryRouter);
