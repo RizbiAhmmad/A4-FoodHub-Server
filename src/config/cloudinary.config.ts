@@ -46,7 +46,7 @@ export const uploadFileToCloudinary = async (
         {
           resource_type: "auto",
           public_id: uniqueName,
-          folder: `nextbazar/${folder}`,
+          folder: `foodhub/${folder}`,
           access_mode: "public",
         },
         (error, result) => {

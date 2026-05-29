@@ -27,7 +27,7 @@ const storage = new CloudinaryStorage({
     const folder = extension === "pdf" ? "pdfs" : "images";
 
     return {
-      folder: `nextbazar/${folder}`,
+      folder: `foodhub/${folder}`,
       public_id: uniqueName,
       resource_type: "auto",
     };
