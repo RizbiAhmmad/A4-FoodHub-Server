@@ -11,6 +11,7 @@ import { userRouter } from "./modules/user/user.router";
 import { metaRouter } from "./modules/meta/meta.router";
 import errorHandler from "./middlewares/globalErrorHandler";
 import { notFound } from "./middlewares/notFound";
+import { requestLogger } from "./middlewares/requestLogger";
 
 const app: Application = express();
 
@@ -51,6 +52,8 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+
+app.use(requestLogger);
 
 app.use("/api/meta", metaRouter);
 app.use("/api/users", userRouter);
