@@ -11,7 +11,13 @@ const createMeal = async (req: Request, res: Response, next: NextFunction) => {
 
     if (!provider) throw new Error("Provider profile not found");
 
-    const result = await mealService.createMeal(provider.id, req.body);
+    const payload: any = { ...req.body };
+    if (req.file) {
+      // @ts-ignore
+      payload.image = req.file.path || req.file.secure_url || req.file.url;
+    }
+
+    const result = await mealService.createMeal(provider.id, payload);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -66,10 +72,16 @@ const updateMeal = async (req: Request, res: Response) => {
     where: { userId: user.id },
   });
 
+  const payload: any = { ...req.body };
+  if (req.file) {
+    // @ts-ignore
+    payload.image = req.file.path || req.file.secure_url || req.file.url;
+  }
+
   const result = await mealService.updateMeal(
     req.params.id as string,
     provider!.id,
-    req.body,
+    payload,
   );
 
   res.json(result);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { mealController } from "./meal.controller";
 import auth, { UserRole } from "../../middlewares/auth";
+import { multerUpload } from "../../config/multer.config";
 
 const router = Router();
 
@@ -10,8 +11,18 @@ router.get("/:id", mealController.getMealById);
 
 
 // PROVIDER ONLY
-router.post("/", auth(UserRole.PROVIDER), mealController.createMeal);
-router.patch("/:id", auth(UserRole.PROVIDER), mealController.updateMeal);
+router.post(
+	"/",
+	auth(UserRole.PROVIDER),
+	multerUpload.single("image"),
+	mealController.createMeal,
+);
+router.patch(
+	"/:id",
+	auth(UserRole.PROVIDER),
+	multerUpload.single("image"),
+	mealController.updateMeal,
+);
 router.delete("/:id", auth(UserRole.PROVIDER), mealController.deleteMeal);
 
 export const mealRouter = router;

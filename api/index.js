@@ -996,7 +996,11 @@ var categoryService = {
 // src/modules/category/category.controller.ts
 var createCategory2 = async (req, res, next) => {
   try {
-    const result = await categoryService.createCategory(req.body);
+    const payload = { ...req.body };
+    if (req.file) {
+      payload.image = req.file.path || req.file.secure_url || req.file.url;
+    }
+    const result = await categoryService.createCategory(payload);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -1016,9 +1020,91 @@ var categoryController = {
   deleteCategory: deleteCategory2
 };
 
+// src/config/multer.config.ts
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+
+// src/config/cloudinary.config.ts
+import { v2 as cloudinary } from "cloudinary";
+import status2 from "http-status";
+
+// src/errorHelpers/AppError.ts
+var AppError = class extends Error {
+  statusCode;
+  constructor(statusCode, message, stack = "") {
+    super(message);
+    this.statusCode = statusCode;
+    if (stack) {
+      this.stack = stack;
+    } else {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+};
+var AppError_default = AppError;
+
+// src/config/env.ts
+import dotenv from "dotenv";
+import status from "http-status";
+dotenv.config();
+var loadEnvVariables = () => {
+  const requiredEnvVariable = [
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET"
+  ];
+  requiredEnvVariable.forEach((variable) => {
+    if (!process.env[variable]) {
+      throw new AppError_default(
+        status.INTERNAL_SERVER_ERROR,
+        `Environment variable ${variable} is required but not set in .env file.`
+      );
+    }
+  });
+  return {
+    CLOUDINARY: {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+    }
+  };
+};
+var envVars = loadEnvVariables();
+
+// src/config/cloudinary.config.ts
+cloudinary.config({
+  cloud_name: envVars.CLOUDINARY.CLOUDINARY_CLOUD_NAME,
+  api_key: envVars.CLOUDINARY.CLOUDINARY_API_KEY,
+  api_secret: envVars.CLOUDINARY.CLOUDINARY_API_SECRET
+});
+var cloudinaryUpload = cloudinary;
+
+// src/config/multer.config.ts
+var storage = new CloudinaryStorage({
+  cloudinary: cloudinaryUpload,
+  params: async (req, file) => {
+    const originalName = file.originalname;
+    const extension = originalName.split(".").pop()?.toLocaleLowerCase();
+    const fileNameWithoutExtension = originalName.split(".").slice(0, -1).join(".").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
+    const uniqueName = Math.random().toString(36).substring(2) + "-" + Date.now() + "-" + fileNameWithoutExtension;
+    const folder = extension === "pdf" ? "pdfs" : "images";
+    return {
+      folder: `foodhub/${folder}`,
+      public_id: uniqueName,
+      resource_type: "auto"
+    };
+  }
+});
+var multerUpload = multer({ storage });
+
 // src/modules/category/category.router.ts
 var router2 = Router2();
-router2.post("/", auth_default("ADMIN" /* ADMIN */, "PROVIDER" /* PROVIDER */), categoryController.createCategory);
+router2.post(
+  "/",
+  auth_default("ADMIN" /* ADMIN */, "PROVIDER" /* PROVIDER */),
+  multerUpload.single("image"),
+  categoryController.createCategory
+);
 router2.get("/", categoryController.getAllCategories);
 router2.delete("/:id", auth_default("ADMIN" /* ADMIN */, "PROVIDER" /* PROVIDER */), categoryController.deleteCategory);
 var categoryRouter = router2;
@@ -1099,7 +1185,11 @@ var createMeal2 = async (req, res, next) => {
       where: { userId: user.id }
     });
     if (!provider) throw new Error("Provider profile not found");
-    const result = await mealService.createMeal(provider.id, req.body);
+    const payload = { ...req.body };
+    if (req.file) {
+      payload.image = req.file.path || req.file.secure_url || req.file.url;
+    }
+    const result = await mealService.createMeal(provider.id, payload);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -1143,10 +1233,14 @@ var updateMeal2 = async (req, res) => {
   const provider = await prisma.providerProfile.findUnique({
     where: { userId: user.id }
   });
+  const payload = { ...req.body };
+  if (req.file) {
+    payload.image = req.file.path || req.file.secure_url || req.file.url;
+  }
   const result = await mealService.updateMeal(
     req.params.id,
     provider.id,
-    req.body
+    payload
   );
   res.json(result);
 };
@@ -1175,8 +1269,18 @@ var router3 = Router3();
 router3.get("/", mealController.getAllMeals);
 router3.get("/my-meals", auth_default("PROVIDER" /* PROVIDER */), mealController.getMyMeals);
 router3.get("/:id", mealController.getMealById);
-router3.post("/", auth_default("PROVIDER" /* PROVIDER */), mealController.createMeal);
-router3.patch("/:id", auth_default("PROVIDER" /* PROVIDER */), mealController.updateMeal);
+router3.post(
+  "/",
+  auth_default("PROVIDER" /* PROVIDER */),
+  multerUpload.single("image"),
+  mealController.createMeal
+);
+router3.patch(
+  "/:id",
+  auth_default("PROVIDER" /* PROVIDER */),
+  multerUpload.single("image"),
+  mealController.updateMeal
+);
 router3.delete("/:id", auth_default("PROVIDER" /* PROVIDER */), mealController.deleteMeal);
 var mealRouter = router3;
 
@@ -1280,10 +1384,10 @@ var getProviderOrders = async (providerUserId) => {
     orderBy: { createdAt: "desc" }
   });
 };
-var updateOrderStatus = async (orderId, status) => {
+var updateOrderStatus = async (orderId, status3) => {
   return prisma.order.update({
     where: { id: orderId },
-    data: { status }
+    data: { status: status3 }
   });
 };
 var orderService = {
@@ -1325,10 +1429,10 @@ var getProviderOrders2 = async (req, res) => {
   res.json(result);
 };
 var updateOrderStatus2 = async (req, res) => {
-  const { status } = req.body;
+  const { status: status3 } = req.body;
   const result = await orderService.updateOrderStatus(
     req.params.id,
-    status
+    status3
   );
   res.json(result);
 };
@@ -1542,10 +1646,10 @@ var changeUserRole = async (userId, role) => {
     data: { role }
   });
 };
-var changeUserStatus = async (userId, status) => {
+var changeUserStatus = async (userId, status3) => {
   return prisma.user.update({
     where: { id: userId },
-    data: { status }
+    data: { status: status3 }
   });
 };
 var userService = {
@@ -1738,6 +1842,40 @@ function notFound(req, res) {
   });
 }
 
+// src/middlewares/requestLogger.ts
+import fs from "fs/promises";
+import path2 from "path";
+var logDir = path2.resolve(process.cwd(), "logs");
+var accessLogPath = path2.join(logDir, "access.log");
+var ensureLogDir = async () => {
+  await fs.mkdir(logDir, { recursive: true });
+};
+var requestLogger = async (req, res, next) => {
+  const startTime = process.hrtime.bigint();
+  res.on("finish", async () => {
+    try {
+      const endTime = process.hrtime.bigint();
+      const responseTimeMs = Number(endTime - startTime) / 1e6;
+      const logEntry = JSON.stringify({
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        method: req.method,
+        endpoint: req.originalUrl,
+        statusCode: res.statusCode,
+        responseTimeMs: Number(responseTimeMs.toFixed(2)),
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "unknown"
+      });
+      console.log(logEntry);
+      await ensureLogDir();
+      await fs.appendFile(accessLogPath, `${logEntry}
+`, "utf8");
+    } catch (error) {
+      console.error("Failed to write access log:", error);
+    }
+  });
+  next();
+};
+
 // src/app.ts
 var app = express();
 var allowedOrigins = [
@@ -1767,6 +1905,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+app.use(requestLogger);
 app.use("/api/meta", metaRouter);
 app.use("/api/users", userRouter);
 app.use("/api/providers", providerRouter);
